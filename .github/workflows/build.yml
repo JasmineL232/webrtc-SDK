@@ -1,4 +1,4 @@
-name: Build WebRTC Static Library
+name: Build WebRTC SDK
 
 on:
   workflow_dispatch:  # 手动触发构建
@@ -32,8 +32,15 @@ jobs:
       run: |
         ninja -C out/Default
 
-    - name: Upload static libraries
+    - name: Archive headers
+      run: |
+        mkdir -p out/Default/include
+        find . -type f -name '*.h' -not -path './.git/*' -exec cp --parents {} out/Default/include/ \;
+
+    - name: Upload full SDK (lib + headers)
       uses: actions/upload-artifact@v4
       with:
-        name: libwebrtc
-        path: out/Default/*.a
+        name: webrtc-sdk
+        path: |
+          out/Default/*.a
+          out/Default/include/
