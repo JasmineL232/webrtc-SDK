@@ -1,39 +1,39 @@
-name: Build WebRTC (m137 Linux)
+name: Build WebRTC Static Library
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:  # 手动触发构建
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Checkout your forked source
+      uses: actions/checkout@v4
+
     - name: Install dependencies
       run: |
         sudo apt update
-        sudo apt install -y python3 git curl build-essential unzip pkg-config
+        sudo apt install -y python3 curl build-essential unzip pkg-config ninja-build clang
 
-    - name: Clone depot_tools
+    - name: Download GN
       run: |
-        git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
-        echo "$PWD/depot_tools" >> $GITHUB_PATH
+        git clone https://gn.googlesource.com/gn
+        cd gn
+        python3 build/gen.py
+        ninja -C out
+        echo "$PWD/out" >> $GITHUB_PATH
 
-    - name: Fetch WebRTC m137
+    - name: Generate build config
       run: |
-        mkdir webrtc-checkout && cd webrtc-checkout
-        fetch --nohooks webrtc
-        cd src
-        git checkout m137_release
-        gclient sync
+        gn gen out/Default --args='is_debug=false rtc_include_tests=false treat_warnings_as_errors=false use_custom_libcxx=false'
 
-    - name: Build WebRTC
+    - name: Build WebRTC static lib
       run: |
-        cd webrtc-checkout/src
-        gn gen out/Default --args='is_debug=false rtc_include_tests=false'
         ninja -C out/Default
 
     - name: Upload static libraries
       uses: actions/upload-artifact@v4
       with:
-        name: libwebrtc-static
-        path: webrtc-checkout/src/out/Default/*.a
+        name: libwebrtc
+        path: out/Default/*.a
