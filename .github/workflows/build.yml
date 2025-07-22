@@ -1,0 +1,39 @@
+name: Build WebRTC (m137 Linux)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install -y python3 git curl build-essential unzip pkg-config
+
+    - name: Clone depot_tools
+      run: |
+        git clone https://chromium.googlesource.com/chromium/tools/depot_tools.git
+        echo "$PWD/depot_tools" >> $GITHUB_PATH
+
+    - name: Fetch WebRTC m137
+      run: |
+        mkdir webrtc-checkout && cd webrtc-checkout
+        fetch --nohooks webrtc
+        cd src
+        git checkout m137_release
+        gclient sync
+
+    - name: Build WebRTC
+      run: |
+        cd webrtc-checkout/src
+        gn gen out/Default --args='is_debug=false rtc_include_tests=false'
+        ninja -C out/Default
+
+    - name: Upload static libraries
+      uses: actions/upload-artifact@v3
+      with:
+        name: libwebrtc-static
+        path: webrtc-checkout/src/out/Default/*.a
